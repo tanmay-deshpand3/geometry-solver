@@ -21,6 +21,7 @@ import {
   setActiveTool,
   addToMeasureHistory,
   clearMeasureHistory,
+  findAllIntersections,
 } from './state';
 import './index.css';
 
@@ -171,26 +172,76 @@ function App() {
 
   useEffect(() => {
     // Calculate measurement results
-    const { measureHistory, points } = state;
-    if (measureHistory.length < 2) {
+    const { measureHistory, points, circles } = state;
+    if (measureHistory.length < 1) {
       setMeasureResult(null);
       return;
     }
 
+    // Count unique coordinates and calculate measurements
+    let totalLength = 0;
+    let hasArc = false;
     const coords: { x: number; y: number }[] = [];
-    measureHistory.forEach((item) => {
+    let arcSegmentArea = 0; // Area of circular segments from arcs
+
+    for (let i = 0; i < measureHistory.length; i++) {
+      const item = measureHistory[i];
       if (item.type === 'point') {
         const pt = points.get(item.id);
-        if (pt) coords.push({ x: pt.x, y: pt.y });
-      }
-    });
+        if (pt) {
+          // Add straight line distance from previous point
+          if (coords.length > 0) {
+            const prev = coords[coords.length - 1];
+            totalLength += Math.sqrt((pt.x - prev.x) ** 2 + (pt.y - prev.y) ** 2);
+          }
+          coords.push({ x: pt.x, y: pt.y });
+        }
+      } else if (item.type === 'arc' && item.toId) {
+        hasArc = true;
+        const fromPt = points.get(item.fromId);
+        const toPt = points.get(item.toId);
+        const circle = circles.get(item.circleId);
+        if (fromPt && toPt && circle) {
+          const center = getCircleCenter(circle, points);
+          const radius = circle.radius || 0;
+          if (center && radius > 0) {
+            // Calculate arc angle and length
+            const angle1 = Math.atan2(fromPt.y - center.y, fromPt.x - center.x);
+            const angle2 = Math.atan2(toPt.y - center.y, toPt.x - center.x);
+            let arcAngle = angle2 - angle1;
+            // Normalize to [0, 2π] - take shorter arc
+            if (arcAngle < 0) arcAngle += 2 * Math.PI;
+            if (arcAngle > Math.PI) arcAngle = 2 * Math.PI - arcAngle;
 
-    if (coords.length === 2) {
+            const arcLength = radius * arcAngle;
+            totalLength += arcLength;
+
+            // Calculate circular segment area (for polygon area adjustment)
+            // Segment area = (r²/2)(θ - sin(θ))
+            const segmentArea = (radius * radius / 2) * (arcAngle - Math.sin(arcAngle));
+            arcSegmentArea += segmentArea;
+
+            // Add the endpoint to coords for polygon calculation
+            coords.push({ x: toPt.x, y: toPt.y });
+          }
+        }
+      }
+    }
+
+    if (coords.length === 2 && !hasArc) {
+      // Simple 2-point distance
       const len = Math.sqrt((coords[1].x - coords[0].x) ** 2 + (coords[1].y - coords[0].y) ** 2);
       setMeasureResult({ type: 'length', value: len });
+    } else if (coords.length === 2 && hasArc) {
+      // Arc length between 2 points
+      setMeasureResult({ type: 'length', value: totalLength });
     } else if (coords.length >= 3) {
-      const area = shoelaceArea(coords);
-      setMeasureResult({ type: 'area', value: area });
+      // Polygon area = shoelace + circular segment areas
+      const polygonArea = shoelaceArea(coords);
+      const totalArea = polygonArea + arcSegmentArea;
+      setMeasureResult({ type: 'area', value: totalArea });
+    } else {
+      setMeasureResult(null);
     }
   }, [state.measureHistory, state.points, state.circles]);
 
@@ -287,6 +338,9 @@ function App() {
         break;
     }
 
+    // Automatically detect and create intersection points
+    findAllIntersections(newState);
+
     setState(newState);
   };
 
@@ -309,11 +363,13 @@ function App() {
     } else if (e.key === 'a' || e.key === 'A') {
       // Open absolute angle HUD if we have a pending segment start
       if (pendingSegmentStart && hudMode === 'none') {
+        e.preventDefault();
         setHudMode('absAngle');
       }
     } else if (e.key === 'r' || e.key === 'R') {
       // Switch from circumference mode to radius input
       if (pendingCircleCenter && hudMode === 'circumference') {
+        e.preventDefault();
         setHudMode('radius');
       }
     }
@@ -342,6 +398,7 @@ function App() {
       if (!isNaN(r) && r > 0) {
         const newState = { ...state, points: new Map(state.points), segments: new Map(state.segments), circles: new Map(state.circles), selectedIds: [...state.selectedIds], measureHistory: [...state.measureHistory] };
         addCircleRadius(newState, pendingCircleCenter, r);
+        findAllIntersections(newState);
         setState(newState);
       }
     }
@@ -357,6 +414,7 @@ function App() {
       if (!isNaN(angle) && !isNaN(length) && length > 0) {
         const newState = { ...state, points: new Map(state.points), segments: new Map(state.segments), circles: new Map(state.circles), selectedIds: [...state.selectedIds], measureHistory: [...state.measureHistory] };
         addSegmentAbsAngle(newState, pendingSegmentStart, angle, length);
+        findAllIntersections(newState);
         setState(newState);
       }
     }
@@ -372,6 +430,7 @@ function App() {
       if (!isNaN(angle) && !isNaN(length) && length > 0) {
         const newState = { ...state, points: new Map(state.points), segments: new Map(state.segments), circles: new Map(state.circles), selectedIds: [...state.selectedIds], measureHistory: [...state.measureHistory] };
         addSegmentRelAngle(newState, pendingSegmentStart, pendingRefSegment, angle, length);
+        findAllIntersections(newState);
         setState(newState);
       }
     }

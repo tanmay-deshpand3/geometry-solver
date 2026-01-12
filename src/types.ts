@@ -35,7 +35,7 @@ export interface Circle {
 
 export type ToolType = 'SELECT' | 'POINT' | 'SEGMENT' | 'CIRCLE' | 'MEASURE';
 
-export type MeasureHistoryItem = { type: 'point'; id: ID } | { type: 'arc'; circleId: ID; fromId: ID; toId: ID };
+export type MeasureHistoryItem = { type: 'point'; id: ID } | { type: 'arc'; circleId: ID; fromId: ID; toId: ID; clickAngle: number };
 
 export interface GeometryState {
     points: Map<ID, Point>;

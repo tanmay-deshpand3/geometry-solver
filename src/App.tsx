@@ -135,11 +135,9 @@ function App() {
             const center = getCircleCenter(circle, points);
             const radius = circle.radius || 0;
             if (center && radius > 0) {
-              // Use Paper.js arcTo with "through" point on the circle
-              const midAngle = (Math.atan2(fromPt.y - center.y, fromPt.x - center.x) +
-                Math.atan2(toPt.y - center.y, toPt.x - center.x)) / 2;
-              const throughX = center.x + radius * Math.cos(midAngle);
-              const throughY = center.y + radius * Math.sin(midAngle);
+              // Use the click angle as the "through" point to determine which arc
+              const throughX = center.x + radius * Math.cos(item.clickAngle);
+              const throughY = center.y + radius * Math.sin(item.clickAngle);
               path.arcTo(
                 new paper.Point(throughX * SCALE, throughY * SCALE),
                 new paper.Point(toPt.x * SCALE, toPt.y * SCALE)
@@ -205,13 +203,36 @@ function App() {
           const center = getCircleCenter(circle, points);
           const radius = circle.radius || 0;
           if (center && radius > 0) {
-            // Calculate arc angle and length
+            // Calculate arc angle and length based on click position
             const angle1 = Math.atan2(fromPt.y - center.y, fromPt.x - center.x);
             const angle2 = Math.atan2(toPt.y - center.y, toPt.x - center.x);
-            let arcAngle = angle2 - angle1;
-            // Normalize to [0, 2π] - take shorter arc
-            if (arcAngle < 0) arcAngle += 2 * Math.PI;
-            if (arcAngle > Math.PI) arcAngle = 2 * Math.PI - arcAngle;
+            const clickAngle = item.clickAngle;
+
+            // Determine if clickAngle is on the "short" arc (from angle1 to angle2 counterclockwise)
+            // or on the "long" arc (the other way around)
+            let arcAngle: number;
+
+            // Normalize angles to [0, 2π]
+            const normalizeAngle = (a: number) => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+            const a1 = normalizeAngle(angle1);
+            const a2 = normalizeAngle(angle2);
+            const ac = normalizeAngle(clickAngle);
+
+            // Check if click is on the CCW arc from a1 to a2
+            const isClickOnCCWArc = (a1 <= a2)
+              ? (ac >= a1 && ac <= a2)
+              : (ac >= a1 || ac <= a2);
+
+            // Calculate CCW arc angle from a1 to a2
+            let ccwArc = a2 - a1;
+            if (ccwArc < 0) ccwArc += 2 * Math.PI;
+
+            // Choose the arc based on where user clicked
+            if (isClickOnCCWArc) {
+              arcAngle = ccwArc;
+            } else {
+              arcAngle = 2 * Math.PI - ccwArc;
+            }
 
             const arcLength = radius * arcAngle;
             totalLength += arcLength;
@@ -330,8 +351,14 @@ function App() {
             // Get the last point from history to use as arc start
             const lastItem = newState.measureHistory[newState.measureHistory.length - 1];
             if (lastItem && lastItem.type === 'point') {
+              // Calculate click angle relative to circle center
+              const center = getCircleCenter(hitCircle, newState.points);
+              let clickAngle = 0;
+              if (center) {
+                clickAngle = Math.atan2(y - center.y, x - center.x);
+              }
               // Start an arc from the last point - toId will be filled on next point click
-              addToMeasureHistory(newState, { type: 'arc', circleId: hitCircle.id, fromId: lastItem.id, toId: '' });
+              addToMeasureHistory(newState, { type: 'arc', circleId: hitCircle.id, fromId: lastItem.id, toId: '', clickAngle });
             }
           }
         }

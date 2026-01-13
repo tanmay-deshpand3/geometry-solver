@@ -20,9 +20,14 @@ interface SolverParams {
 }
 
 /**
- * Extract free parameters from the state.
- * - Floating points (isFloating = true) have their coords as free params
- * - Variables with isDetermined = true are free params (solver finds them)
+ * Collects the solver's free parameters from the geometry state.
+ *
+ * Produces a SolverParams object containing coordinate entries for every point marked
+ * as floating and value entries for every variable marked as determined.
+ *
+ * @returns An object with:
+ *  - `pointCoords`: an array of `{ pointId, coord, value }` entries (two entries — `'x'` and `'y'` — for each floating point)
+ *  - `variableValues`: an array of `{ name, value }` entries for each variable where `isDetermined` is true
  */
 function extractFreeParams(state: GeometryState): SolverParams {
     const pointCoords: SolverParams['pointCoords'] = [];
@@ -48,7 +53,14 @@ function extractFreeParams(state: GeometryState): SolverParams {
 }
 
 /**
- * Apply parameter values back to the state.
+ * Update the geometry state with values from a SolverParams structure.
+ *
+ * Writes each entry in `params.pointCoords` into the corresponding point's `x` or `y` coordinate
+ * and each entry in `params.variableValues` into the corresponding variable's `value`.
+ * Entries that reference missing points or variables are ignored.
+ *
+ * @param state - The geometry state to modify
+ * @param params - Solver parameters containing `pointCoords` and `variableValues` to apply
  */
 function applyParams(state: GeometryState, params: SolverParams): void {
     for (const { pointId, coord, value } of params.pointCoords) {
@@ -67,7 +79,13 @@ function applyParams(state: GeometryState, params: SolverParams): void {
 }
 
 /**
- * Flatten params into a 1D array for the solver.
+ * Produce a flat parameter vector suitable for the solver.
+ *
+ * Point coordinate values appear first in the same order as `params.pointCoords`,
+ * followed by variable values in the same order as `params.variableValues`.
+ *
+ * @param params - Solver parameters containing `pointCoords` and `variableValues`
+ * @returns A one-dimensional array of parameter values: `[...pointCoordValues, ...variableValues]`
  */
 function flattenParams(params: SolverParams): number[] {
     return [
@@ -77,7 +95,11 @@ function flattenParams(params: SolverParams): number[] {
 }
 
 /**
- * Unflatten a 1D array back into params structure.
+ * Reconstructs a SolverParams object from a flat numeric array using a template.
+ *
+ * @param flat - Flat array of parameter values arranged as [pointCoords..., variableValues...]
+ * @param template - Template SolverParams whose structure and ordering determine mapping
+ * @returns A new SolverParams with `value` fields populated from `flat` following `template` order
  */
 function unflattenParams(flat: number[], template: SolverParams): SolverParams {
     const pointCoords = template.pointCoords.map((p, i) => ({
@@ -94,7 +116,14 @@ function unflattenParams(flat: number[], template: SolverParams): SolverParams {
 // ============ GEOMETRY HELPERS ============
 
 /**
- * Get circle center and radius from state.
+ * Compute a circle's center coordinates and radius from the geometry state.
+ *
+ * Supports circles defined either by a center plus radius or by three defining points.
+ * Returns `null` if the circle is not found, is not in a supported format, or if the defining points are degenerate (collinear) such that a unique circumcircle cannot be determined.
+ *
+ * @param state - The geometry state containing circles and points
+ * @param circleId - The identifier of the circle to retrieve
+ * @returns An object with `cx`, `cy` (center coordinates) and `r` (radius), or `null` if unavailable
  */
 function getCircleCenterRadius(state: GeometryState, circleId: ID): { cx: number; cy: number; r: number } | null {
     const circle = state.circles.get(circleId);
@@ -127,7 +156,15 @@ function getCircleCenterRadius(state: GeometryState, circleId: ID): { cx: number
 }
 
 /**
- * Distance from point to line segment (for POINT_ON_SEGMENT).
+ * Computes the Euclidean distance from a point (px, py) to the line segment between (x1, y1) and (x2, y2).
+ *
+ * @param px - X coordinate of the point
+ * @param py - Y coordinate of the point
+ * @param x1 - X coordinate of the segment start
+ * @param y1 - Y coordinate of the segment start
+ * @param x2 - X coordinate of the segment end
+ * @param y2 - Y coordinate of the segment end
+ * @returns The shortest Euclidean distance from the point to the segment; if the segment is degenerate (endpoints coincide), returns the distance to that endpoint.
  */
 function pointToSegmentDistance(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
     const dx = x2 - x1;
@@ -147,7 +184,15 @@ function pointToSegmentDistance(px: number, py: number, x1: number, y1: number, 
 }
 
 /**
- * Check if angle is within arc range (CCW from start to end).
+ * Determines whether an angle lies within the counterclockwise arc from `startAngle` to `endAngle`.
+ *
+ * Angles are interpreted in radians; endpoints are inclusive. The function correctly handles arcs
+ * that cross the 0-radian boundary by normalizing angles into the [0, 2π) range.
+ *
+ * @param angle - The angle to test, in radians
+ * @param startAngle - The start of the arc, in radians
+ * @param endAngle - The end of the arc, in radians
+ * @returns `true` if `angle` lies on the CCW arc from `startAngle` to `endAngle`, `false` otherwise
  */
 function isAngleInArcRange(angle: number, startAngle: number, endAngle: number): boolean {
     // Normalize all angles to [0, 2π)
@@ -167,7 +212,19 @@ function isAngleInArcRange(angle: number, startAngle: number, endAngle: number):
 // ============ RESIDUAL COMPUTATION ============
 
 /**
- * Compute the residual for a single constraint.
+ * Compute the scalar residual error of a single constraint in the given geometry state.
+ *
+ * The residual quantifies how much the constraint is violated (zero when satisfied).
+ *
+ * @param constraint - The constraint to evaluate (e.g., DISTANCE, ANGLE, POINT_ON_SEGMENT, POINT_ON_CIRCLE, POINT_ON_ARC, EQUATION)
+ * @param state - Geometry state used to resolve referenced points, segments, arcs, circles, and variables
+ * @returns The numeric residual:
+ * - For `DISTANCE`: actual distance minus target distance.
+ * - For `ANGLE`: signed angular difference in degrees, wrapped to the range [-180, 180].
+ * - For `POINT_ON_SEGMENT`: perpendicular distance from the point to the segment (>= 0).
+ * - For `POINT_ON_CIRCLE`: absolute difference between point radius and circle radius (>= 0).
+ * - For `POINT_ON_ARC`: radial distance plus an arc-length penalty when the point lies outside the angular span (>= 0).
+ * - For `EQUATION`: evaluated expression value (zero when satisfied).
  */
 function computeResidual(constraint: Constraint, state: GeometryState): number {
     switch (constraint.type) {
@@ -277,7 +334,10 @@ function computeResidual(constraint: Constraint, state: GeometryState): number {
 }
 
 /**
- * Compute residual vector for all constraints.
+ * Builds the residual vector for every constraint in the provided geometry state.
+ *
+ * @param state - The geometry state whose constraints will be evaluated
+ * @returns An array of residual values, one per constraint in `state.constraints` in the same order
  */
 function computeResiduals(state: GeometryState): number[] {
     return state.constraints.map(c => computeResidual(c, state));
@@ -286,7 +346,16 @@ function computeResiduals(state: GeometryState): number[] {
 // ============ JACOBIAN COMPUTATION ============
 
 /**
- * Compute the Jacobian matrix numerically using finite differences.
+ * Numerically approximates the Jacobian of all constraint residuals with respect to the free solver parameters.
+ *
+ * Uses finite differences by perturbing each parameter (perturbation magnitude is the max of NUMERICAL_EPSILON and
+ * |parameter| * NUMERICAL_EPSILON) and evaluating residual changes. Non-finite derivative values are replaced with 0.
+ *
+ * @param state - Geometry state used to evaluate constraint residuals.
+ * @param params - SolverParams whose ordering (as produced by `flattenParams`) defines the parameter order for columns.
+ * @returns The Jacobian as an array of columns: outer array length equals the number of parameters, each column is an array
+ * of partial derivatives of every constraint residual with respect to that parameter. Returns an empty array if there are
+ * no free parameters or no constraints.
  */
 function computeJacobian(state: GeometryState, params: SolverParams): number[][] {
     const flatParams = flattenParams(params);
@@ -328,7 +397,12 @@ function computeJacobian(state: GeometryState, params: SolverParams): number[][]
     return jacobian;
 }
 
-// ============ LINEAR ALGEBRA HELPERS ============
+/**
+ * Compute the product of a matrix and its transpose (J * J^T).
+ *
+ * @param J - Input matrix with shape [n][m] (n rows, m columns). Rows typically correspond to parameters and columns to residuals.
+ * @returns An n-by-n matrix where entry (i, j) equals the dot product of row `i` and row `j` of `J`. Returns an empty array if `J` has zero rows.
+ */
 
 function matMulTranspose(J: number[][]): number[][] {
     const n = J.length;
@@ -350,6 +424,13 @@ function matMulTranspose(J: number[][]): number[][] {
     return result;
 }
 
+/**
+ * Compute the product of J^T and r given a matrix J whose rows correspond to parameters and columns correspond to residuals.
+ *
+ * @param J - A matrix with shape [numParams][numResiduals]; each row is the derivative vector for a parameter.
+ * @param r - A residual vector of length `numResiduals`.
+ * @returns A vector of length `numParams` where the i-th element is the dot product of `J[i]` and `r` (i.e., sum_j J[i][j] * r[j]).
+ */
 function matVecMulTranspose(J: number[][], r: number[]): number[] {
     const n = J.length;
     if (n === 0) return [];
@@ -366,6 +447,13 @@ function matVecMulTranspose(J: number[][], r: number[]): number[] {
     return result;
 }
 
+/**
+ * Solves the linear system A*x = b using Gaussian elimination with partial pivoting.
+ *
+ * @param A - Square coefficient matrix of size n x n
+ * @param b - Right-hand side vector of length n
+ * @returns The solution vector `x` of length n. For an empty system returns `[]`. If the matrix is singular or has near-zero pivots, corresponding entries in `x` are left as `0` (system is not explicitly reported as unsolvable).
+ */
 function solveLinearSystem(A: number[][], b: number[]): number[] | null {
     const n = A.length;
     if (n === 0) return [];
@@ -406,14 +494,34 @@ function solveLinearSystem(A: number[][], b: number[]): number[] | null {
     return x;
 }
 
+/**
+ * Compute the Euclidean norm (L2 length) of a numeric vector.
+ *
+ * @param v - Array of numeric components of the vector
+ * @returns The Euclidean norm (square root of the sum of squares) of `v`
+ */
 function vecNorm(v: number[]): number {
     return Math.sqrt(v.reduce((sum, x) => sum + x * x, 0));
 }
 
+/**
+ * Adds two numeric vectors element-wise.
+ *
+ * @param a - First vector
+ * @param b - Second vector (must have the same length as `a`)
+ * @returns A new vector whose elements are `a[i] + b[i]` for each index `i`
+ */
 function vecAdd(a: number[], b: number[]): number[] {
     return a.map((x, i) => x + b[i]);
 }
 
+/**
+ * Scale a numeric vector by a scalar multiplier.
+ *
+ * @param v - The input vector
+ * @param s - Scalar multiplier applied to each element
+ * @returns A new vector where each element is the corresponding element of `v` multiplied by `s`
+ */
 function vecScale(v: number[], s: number): number[] {
     return v.map(x => x * s);
 }
@@ -427,7 +535,10 @@ export interface SolverResult {
 }
 
 /**
- * Run the Levenberg-Marquardt solver to satisfy all constraints.
+ * Minimizes constraint residuals for the given geometry state using the Levenberg–Marquardt algorithm.
+ *
+ * @param state - The geometry state containing points, variables, and constraints to be solved.
+ * @returns The solver result: `success` is `true` when the residual norm is below the convergence threshold, `iterations` is the number of LM iterations performed (equals the configured maximum on failure), and `finalError` is the final residual norm.
  */
 export function solve(state: GeometryState): SolverResult {
     if (state.constraints.length === 0) {
@@ -495,8 +606,11 @@ export function solve(state: GeometryState): SolverResult {
 }
 
 /**
- * Validate if a constraint can be satisfied (trial solve).
- * Returns true if the solver converges, false if impossible.
+ * Check whether adding a constraint to the current geometry yields a solvable system.
+ *
+ * @param state - The current geometry state used as the base for the trial.
+ * @param newConstraint - The constraint to test for feasibility.
+ * @returns `true` if the solver converges with the added constraint, `false` otherwise.
  */
 export function validateConstraint(state: GeometryState, newConstraint: Constraint): boolean {
     // Clone the state for trial

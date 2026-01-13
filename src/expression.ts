@@ -15,6 +15,16 @@ interface Token {
     value: string;
 }
 
+/**
+ * Converts an arithmetic expression string into a sequence of lexical tokens.
+ *
+ * Recognizes numeric literals (including decimals) as `NUMBER`, identifiers as `VARIABLE`,
+ * operators `+ - * / ^` as `OPERATOR`, and parentheses as `LPAREN` / `RPAREN`. Whitespace is ignored;
+ * an `EOF` token is appended at the end. Throws an `Error` on any unrecognized character.
+ *
+ * @param expr - The arithmetic expression to tokenize
+ * @returns An array of tokens representing the input expression, terminated by an `EOF` token
+ */
 function tokenize(expr: string): Token[] {
     const tokens: Token[] = [];
     let i = 0;
@@ -177,7 +187,13 @@ class Parser {
     }
 }
 
-// ============ EVALUATOR ============
+/**
+ * Evaluate an AST representing an arithmetic expression using the provided variable bindings.
+ *
+ * @param node - The AST node to evaluate (number, variable, or binary operation).
+ * @param variables - Map of variable names to Variable objects; a missing entry or a Variable with `value === null` is treated as unresolved.
+ * @returns The numeric result of evaluating `node`, or `null` if evaluation cannot be completed due to unresolved variables or invalid operations (for example, division by zero).
+ */
 function evaluateAST(node: ASTNode, variables: Map<string, Variable>): number | null {
     if (node.type === 'number') {
         return node.value;
@@ -213,8 +229,10 @@ function evaluateAST(node: ASTNode, variables: Map<string, Variable>): number | 
 // ============ PUBLIC API ============
 
 /**
- * Parses and validates an expression string.
- * Returns true if valid, false otherwise.
+ * Determine whether an arithmetic expression string is syntactically valid.
+ *
+ * @param expr - The expression to validate
+ * @returns `true` if the expression is syntactically valid, `false` otherwise.
  */
 export function validateExpression(expr: string): boolean {
     try {
@@ -227,8 +245,15 @@ export function validateExpression(expr: string): boolean {
 }
 
 /**
- * Evaluates an expression given a map of variables.
- * Returns the numeric result, or null if any referenced variable is unresolved.
+ * Evaluate an arithmetic expression using the provided variable bindings.
+ *
+ * If `expr` is a number, it is returned directly; otherwise the expression is tokenized,
+ * parsed, and evaluated. Evaluation returns `null` when a referenced variable is missing
+ * or has a `null` value, when division by zero occurs, or when tokenization/parsing fails.
+ *
+ * @param expr - The expression to evaluate, either a numeric literal or an expression string.
+ * @param variables - Map of variable names to `Variable` values used during evaluation.
+ * @returns The numeric result of the evaluation, or `null` on unresolved variables, division by zero, or parse/evaluation errors.
  */
 export function evaluateExpression(expr: string | number, variables: Map<string, Variable>): number | null {
     if (typeof expr === 'number') {
@@ -244,7 +269,10 @@ export function evaluateExpression(expr: string | number, variables: Map<string,
 }
 
 /**
- * Extracts variable names from an expression.
+ * Extracts variable names present in an expression.
+ *
+ * @param expr - The expression to analyze, either a string or a numeric literal. If a number is provided, no variables are present.
+ * @returns An array of variable names found in the expression; duplicates are preserved. Returns an empty array if `expr` is a number or if tokenization fails.
  */
 export function extractVariableNames(expr: string | number): string[] {
     if (typeof expr === 'number') {

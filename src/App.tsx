@@ -44,6 +44,15 @@ const COLORS = {
   text: '#f5fbef',
 };
 
+/**
+ * Main application component that provides the interactive geometry editor UI.
+ *
+ * Manages the geometry model, paper.js rendering, tools (select, point, segment, circle, measure, constraint),
+ * zooming/panning, measurement overlays, variable/equation panels, point selection popups, and constraint creation
+ * with solver validation and snapping.
+ *
+ * @returns The root JSX element for the geometry application, including the canvas and all tool/panel HUDs.
+ */
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<GeometryState>(createInitialState);
@@ -1056,7 +1065,15 @@ function App() {
 }
 
 // Helper functions
-// Thresholds are in logical units (screen pixels / scale)
+/**
+ * Finds a point in the geometry state that lies within a specified distance of the given coordinates.
+ *
+ * @param state - Geometry state to search for points
+ * @param x - X coordinate in logical units
+ * @param y - Y coordinate in logical units
+ * @param threshold - Maximum distance from (x, y) to consider a point a hit, in logical units (screen pixels / scale)
+ * @returns The first `Point` within `threshold` of `(x, y)`, or `null` if none found
+ */
 function findPointAt(state: GeometryState, x: number, y: number, threshold = 0.8): Point | null {
   for (const pt of state.points.values()) {
     const dist = Math.sqrt((pt.x - x) ** 2 + (pt.y - y) ** 2);
@@ -1065,6 +1082,15 @@ function findPointAt(state: GeometryState, x: number, y: number, threshold = 0.8
   return null;
 }
 
+/**
+ * Finds all points in the geometry state that lie within a given distance of the specified coordinate.
+ *
+ * @param state - The geometry state to search
+ * @param x - X coordinate in model units
+ * @param y - Y coordinate in model units
+ * @param threshold - Maximum distance from `(x, y)` to consider a point a match
+ * @returns An array of `Point` objects whose distance to `(x, y)` is less than or equal to `threshold` (empty if none)
+ */
 function findAllPointsAt(state: GeometryState, x: number, y: number, threshold = 0.8): Point[] {
   const result: Point[] = [];
   for (const pt of state.points.values()) {
@@ -1074,6 +1100,12 @@ function findAllPointsAt(state: GeometryState, x: number, y: number, threshold =
   return result;
 }
 
+/**
+ * Finds the first segment whose shortest distance to the point (x, y) is within a given threshold.
+ *
+ * @param threshold - Maximum allowed distance in scene logical units between the point and the segment
+ * @returns The first matching Segment if one is found, or `null` if none are within `threshold`
+ */
 function findSegmentAt(state: GeometryState, x: number, y: number, threshold = 1): Segment | null {
   for (const seg of state.segments.values()) {
     const p1 = state.points.get(seg.p1);
@@ -1087,6 +1119,14 @@ function findSegmentAt(state: GeometryState, x: number, y: number, threshold = 1
   return null;
 }
 
+/**
+ * Compute the shortest Euclidean distance from a point to a line segment.
+ *
+ * The distance is measured to the segment itself (endpoints included); the projection
+ * of the point onto the line is clamped to the segment extents.
+ *
+ * @returns The shortest Euclidean distance between `(px, py)` and the segment from `(x1, y1)` to `(x2, y2)`.
+ */
 function pointToSegmentDist(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
   const dx = x2 - x1;
   const dy = y2 - y1;
@@ -1100,6 +1140,18 @@ function pointToSegmentDist(px: number, py: number, x1: number, y1: number, x2: 
   return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
 }
 
+/**
+ * Finds a circle whose perimeter lies within a given distance of the specified coordinate.
+ *
+ * Searches circles defined by a center+radius or by three points and returns the first circle
+ * whose perimeter is within `threshold` units of the point `(x, y)`.
+ *
+ * @param state - The geometry state containing circles and points
+ * @param x - X coordinate in geometry space to test against circle perimeters
+ * @param y - Y coordinate in geometry space to test against circle perimeters
+ * @param threshold - Maximum distance from the perimeter to consider a hit (default: 2)
+ * @returns The matching `Circle` if one is found, or `null` if none match
+ */
 function findCircleAt(state: GeometryState, x: number, y: number, threshold = 2): Circle | null {
   for (const circle of state.circles.values()) {
     let center: { x: number; y: number } | null = null;

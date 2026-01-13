@@ -146,3 +146,394 @@ body,
   cursor: pointer;
   width: 100%;
 }
+
+/* Floating Panel Styles */
+.floating-panel {
+  position: absolute;
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+  min-width: 300px;
+  max-height: 60vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.floating-panel.variables {
+  top: 80px;
+  left: 16px;
+}
+
+.floating-panel.equations {
+  top: 80px;
+  right: 16px;
+}
+
+.floating-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.floating-panel-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.floating-panel-header button {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 4px;
+}
+
+.floating-panel-header button:hover {
+  color: var(--color-text);
+}
+
+.floating-panel-content {
+  padding: 12px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.variable-row,
+.constraint-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.variable-row:last-child,
+.constraint-row:last-child {
+  border-bottom: none;
+}
+
+.variable-row input[type="text"],
+.variable-row input[type="number"] {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-family: 'Inter', monospace;
+}
+
+.variable-row input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.variable-row .var-name {
+  font-weight: 600;
+  color: var(--color-primary);
+  min-width: 40px;
+}
+
+.variable-row .determined-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(64, 249, 155, 0.2);
+  color: var(--color-primary);
+  border: 1px solid rgba(64, 249, 155, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.variable-row .determined-badge:hover {
+  background: rgba(64, 249, 155, 0.4);
+}
+
+.variable-row .undetermined-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(232, 93, 117, 0.2);
+  color: var(--color-highlight);
+  border: 1px solid rgba(232, 93, 117, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.variable-row .undetermined-badge:hover {
+  background: rgba(232, 93, 117, 0.4);
+}
+
+.constraint-row {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.constraint-row .type {
+  font-weight: 600;
+  color: var(--color-primary);
+  min-width: 80px;
+}
+
+.add-row {
+  padding-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.add-row input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.add-row button {
+  background: var(--color-primary);
+  color: #1a1a1a;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle-panels {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
+}
+
+.toggle-panels button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.toggle-panels button.active {
+  background: var(--color-primary);
+  color: #1a1a1a;
+  border-color: var(--color-primary);
+}
+
+/* Point Selection Popup */
+.point-selection-popup {
+  position: absolute;
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  min-width: 150px;
+  padding: 4px;
+  transform: translate(-50%, 10px);
+}
+
+.point-selection-popup .popup-header {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 6px 10px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 4px;
+}
+
+.point-selection-popup .popup-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px;
+}
+
+.point-selection-popup .popup-item:hover {
+  background: rgba(64, 249, 155, 0.2);
+}
+
+.point-selection-popup .popup-cancel {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: var(--color-highlight);
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.point-selection-popup .popup-cancel:hover {
+  background: rgba(232, 93, 117, 0.2);
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.zoom-controls button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-text);
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zoom-controls button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.zoom-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.zoom-controls .zoom-level {
+  font-size: 12px;
+  min-width: 45px;
+  text-align: center;
+  color: var(--color-text);
+}
+
+/* Select Tool Menu */
+.select-menu {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  z-index: 50;
+}
+
+.select-menu button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-text);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.select-menu button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.select-menu button.delete {
+  background: rgba(232, 93, 117, 0.2);
+  border-color: rgba(232, 93, 117, 0.4);
+  color: var(--color-highlight);
+}
+
+.select-menu button.delete:hover {
+  background: rgba(232, 93, 117, 0.4);
+}
+
+/* Constraint Dialog */
+.constraint-dialog {
+  min-width: 320px;
+}
+
+.constraint-dialog .constraint-type-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.constraint-dialog .constraint-type-select label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.constraint-dialog .constraint-type-select select {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-text);
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.constraint-dialog .constraint-points {
+  font-size: 12px;
+  color: var(--color-primary);
+  margin-bottom: 12px;
+  padding: 8px;
+  background: rgba(64, 249, 155, 0.1);
+  border-radius: 4px;
+}
+
+.constraint-dialog .constraint-dialog-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.constraint-dialog .constraint-dialog-buttons button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  border: none;
+}
+
+.constraint-dialog .constraint-dialog-buttons button:first-child {
+  background: var(--color-primary);
+  color: #1a1a1a;
+}
+
+.constraint-dialog .constraint-dialog-buttons button:last-child {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}

@@ -1,5 +1,5 @@
 // Geometry State Manager with DFS Cascading Delete
-import type { GeometryState, Point, Segment, Circle, ID, ToolType, MeasureHistoryItem } from './types';
+import type { GeometryState, Point, Segment, Circle, Arc, Variable, Constraint, ID, ToolType, MeasureHistoryItem } from './types';
 
 let labelCounter = 0;
 const getNextLabel = (): string => {
@@ -13,6 +13,9 @@ export const createInitialState = (): GeometryState => ({
     points: new Map(),
     segments: new Map(),
     circles: new Map(),
+    arcs: new Map(),
+    variables: new Map(),
+    constraints: [],
     selectedIds: [],
     activeTool: 'SELECT',
     measureHistory: [],
@@ -20,12 +23,13 @@ export const createInitialState = (): GeometryState => ({
     offset: { x: 0, y: 0 },
 });
 
+
 let idCounter = 0;
 export const generateId = (): ID => `id_${++idCounter}`;
 
-export const addPoint = (state: GeometryState, x: number, y: number): Point => {
+export const addPoint = (state: GeometryState, x: number, y: number, isFloating: boolean = false): Point => {
     const id = generateId();
-    const point: Point = { id, x, y, label: getNextLabel(), childrenIds: [] };
+    const point: Point = { id, x, y, label: getNextLabel(), childrenIds: [], isFloating };
     state.points.set(id, point);
     return point;
 };
@@ -159,6 +163,10 @@ export const deleteEntity = (state: GeometryState, id: ID): void => {
     const point = state.points.get(id);
     if (point) {
         [...point.childrenIds].forEach(childId => deleteEntity(state, childId));
+        // Clean up constraints referencing this point
+        state.constraints = state.constraints.filter(c =>
+            !c.pointIds.includes(id) && c.targetId !== id
+        );
         state.points.delete(id);
         return;
     }
@@ -167,6 +175,8 @@ export const deleteEntity = (state: GeometryState, id: ID): void => {
         [...segment.childrenIds].forEach(childId => deleteEntity(state, childId));
         removeFromParentChildren(state, segment.p1, id);
         removeFromParentChildren(state, segment.p2, id);
+        // Clean up constraints referencing this segment
+        state.constraints = state.constraints.filter(c => c.targetId !== id);
         state.segments.delete(id);
         return;
     }
@@ -175,7 +185,16 @@ export const deleteEntity = (state: GeometryState, id: ID): void => {
         [...circle.childrenIds].forEach(childId => deleteEntity(state, childId));
         if (circle.centerId) removeFromParentChildren(state, circle.centerId, id);
         circle.pointIds.forEach(pId => removeFromParentChildren(state, pId, id));
+        // Clean up constraints referencing this circle
+        state.constraints = state.constraints.filter(c => c.targetId !== id);
         state.circles.delete(id);
+    }
+    const arc = state.arcs.get(id);
+    if (arc) {
+        [...arc.childrenIds].forEach(childId => deleteEntity(state, childId));
+        // Clean up constraints referencing this arc
+        state.constraints = state.constraints.filter(c => c.targetId !== id);
+        state.arcs.delete(id);
     }
 };
 
@@ -200,7 +219,55 @@ export const clearMeasureHistory = (state: GeometryState): void => {
     state.measureHistory = [];
 };
 
-// ============ INTERSECTION DETECTION ============
+// ============ VARIABLE MANAGEMENT ============
+
+export const addVariable = (state: GeometryState, name: string, value: number = 1.0, isDetermined: boolean = true): Variable => {
+    const variable: Variable = { name, value, isDetermined };
+    state.variables.set(name, variable);
+    return variable;
+};
+
+export const removeVariable = (state: GeometryState, name: string): void => {
+    state.variables.delete(name);
+};
+
+export const setVariableValue = (state: GeometryState, name: string, value: number): void => {
+    const variable = state.variables.get(name);
+    if (variable) {
+        variable.value = value;
+    }
+};
+
+// ============ CONSTRAINT MANAGEMENT ============
+
+export const addConstraint = (state: GeometryState, constraint: Constraint): void => {
+    state.constraints.push(constraint);
+};
+
+export const removeConstraint = (state: GeometryState, constraintId: ID): void => {
+    state.constraints = state.constraints.filter(c => c.id !== constraintId);
+};
+
+// ============ ARC MANAGEMENT ============
+
+export const addArc = (state: GeometryState, circleId: ID, startId: ID, endId: ID): Arc | null => {
+    const circle = state.circles.get(circleId);
+    const startPt = state.points.get(startId);
+    const endPt = state.points.get(endId);
+    if (!circle || !startPt || !endPt) return null;
+
+    // Prevent zero-length arcs (start == end)
+    if (startId === endId) return null;
+
+    const id = generateId();
+    const arc: Arc = { id, circleId, startId, endId, childrenIds: [] };
+    state.arcs.set(id, arc);
+    circle.childrenIds.push(id);
+    startPt.childrenIds.push(id);
+    endPt.childrenIds.push(id);
+    return arc;
+};
+
 
 const EPSILON = 0.001; // Tolerance for considering points as same location
 

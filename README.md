@@ -1,73 +1,68 @@
-# React + TypeScript + Vite
+# Geometry Solver
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A powerful web-based geometry solving tool that enables users to construct, manipulate, and solve complex geometric constraints in real-time. Built with performance and precision in mind, this application serves as a modern interactive playground for Euclidean geometry.
 
-Currently, two official plugins are available:
+## Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+*   **Interactive Canvas**: Real-time rendering and manipulation of geometric entities using [Paper.js](http://paperjs.org/).
+*   **Constraint Solving**: Define relationships between points, lines, and circles (e.g., Distance, Angle, Incidence). The system automatically solves for undetermined variables to satisfy these constraints.
+*   **Dynamic Measurements**: Real-time measurement of lengths, angles, and areas, including complex paths involving circular arcs.
+*   **Advanced Tools**:
+    *   **Smart Snapping**: Intelligent point and intersection detection.
+    *   **Construction Tools**: Unrestricted point placement, lines, circles (radius, circumference, 3-point).
+    *   **Variable Management**: HUD for precise numerical input and variable tracking.
+*   **State Management**: Robust undo/redo capabilities and history tracking.
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+This project demonstrates expertise in modern frontend engineering and mathematical software design:
 
-## Expanding the ESLint configuration
+*   **Core**: [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) for type-safe, component-based architecture.
+*   **Build System**: [Vite](https://vitejs.dev/) for lightning-fast HMR and optimized production builds.
+*   **Graphics Engine**: [Paper.js](http://paperjs.org/) for high-performance 2D vector graphics rendering.
+*   **Styling**: Custom CSS variables for a maintainable, theme-aware design system.
+*   **Quality Assurance**: ESLint configuration for strict code quality and consistent formatting.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Architecture & Design
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+*   **Modular State Management**: Custom hooks and state reducers efficiently manage the complex dependency graph of geometric entities.
+*   **Mathematical Solver**: Implements numerical methods to iteratively solve systems of geometric constraints.
+*   **Separation of Concerns**: Pure presentation components separated from the heavy lifting of geometric calculations and solver logic.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Getting Started
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### Prerequisites
+*   Node.js (v18 or higher)
+*   npm or yarn
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Installation
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/desh/geometry-solver.git
+    cd geometry-solver
+    ```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+
+3.  Start the development server:
+    ```bash
+    npm run dev
+    ```
+
+4.  Open `http://localhost:5173` in your browser.
+
+## Contributing
+
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Inspiration
+
+This project was inspired by the challenging geometry problems often found in YouTube thumbnails. Seeing so many videos featuring intricate geometric puzzles highlighted the need for a tool that can interactively model and solve them. This application exists to bridge that gap, allowing users to verify solutions and explore these problems dynamically.
+
+---
+*Built to demonstrate robust software engineering practices and passion for algorithmic challenges.*
